@@ -1,8 +1,18 @@
 # Skill: Buying AIsa API Data with x402 on Arc
 
+**This skill is written for [Muse](https://muse.ai)** — Meta's personal AI agent. It teaches a Muse agent how to buy AIsa API data and book flights through AIsa, paying USDC with the x402 protocol on Circle's Arc blockchain. If you're a Muse user, paste the prompt from the "Quick start" section below into your Muse chat and it will walk you through the whole flow.
+
 **CRITICAL: This skill uses Circle Agent Wallet CLI ONLY (`@circle-fin/cli`). Do NOT use raw private keys, mnemonics, or any other wallet. The CLI signs through Circle's infra — a seed phrase should never appear in chat, files, or logs.**
 
 **CRITICAL: Complete the Circle Agent Stack setup skill first** (`https://agents.circle.com/skills/setup.md`): CLI installed, Terms accepted by the user (never accept on their behalf), logged in via email OTP, agent wallet created on ARC, funded with USDC.
+
+## Quick start (paste into Muse)
+
+```
+I want to buy data from AIsa's API and pay with USDC using x402 on Circle's Arc blockchain. Set this up for me following https://aisa.sh/skill.md
+```
+
+Muse will install the Circle CLI, walk you through login and funding (with your approval at each step), then buy whatever AIsa data or flights you ask for — showing you the endpoint, live price, and payer address for your approval before every purchase.
 
 ## What you are buying
 
