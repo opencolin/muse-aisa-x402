@@ -6,7 +6,7 @@
 
 ## What you are buying
 
-AIsa (`https://api.aisa.one`) sells 100+ data endpoints pay-per-call over the x402 protocol: Twitter/X data, Instagram data (40+ endpoints), financials, prediction markets (Polymarket/Kalshi), Perplexity, YouTube, CoinGecko, TikHub social data, and more. Each unpaid request returns **HTTP 402** with a machine-readable payment envelope; the CLI signs an EIP-712 authorization and resubmits; AIsa verifies and returns the data. Settlement is via **Circle Gateway (batched)** on Arc (`eip155:5042`).
+AIsa (`https://api.aisa.one`) sells 100+ data endpoints pay-per-call over the x402 protocol: Twitter/X data, Instagram data (40+ endpoints), financials, prediction markets (Polymarket/Kalshi), Perplexity, YouTube, CoinGecko, TikHub social data, and more. It also proxies **Duffel flight booking** over x402 — search, book, hold, seat maps, changes, cancellations — settling the full fare in USDC. Each unpaid request returns **HTTP 402** with a machine-readable payment envelope; the CLI signs an EIP-712 authorization and resubmits; AIsa verifies and returns the data. Settlement is via **Circle Gateway (batched)** on Arc (`eip155:5042`).
 
 ## Step 1: Discover what to buy
 
@@ -81,6 +81,43 @@ The CLI may report `Payment submitted but paid request failed` with `PAYMENT MAY
 2. Poll `circle gateway balance` for several minutes. Gateway settlement is batched and can lag the response.
 3. Balance dropped by the price → the payment landed; the data was paid for but the response was lost. Do not re-buy.
 4. Balance unchanged after ~10 minutes → the payment never went through; one retry is safe.
+
+## Buying flights (AIsa × Duffel proxy)
+
+AIsa also proxies Duffel's flight-booking API over x402 — search, offer refresh, booking, holds, seat maps, changes, cancellations. The booking settles the **full fare in USDC via x402**; no Stripe Link, no card. Verified live 2026-10-05 (SFO→LGA search + shortlist).
+
+**Endpoints** (base `https://api.aisa.one`, all `x-x402`):
+
+| Endpoint | Method | Purpose | Live price |
+|---|---|---|---|
+| `/apis/v2/duffel/flights/offer-requests/create` | POST | Flight search | $0.10 (spec says $0.02 — live 402 wins) |
+| `/apis/v2/duffel/flights/offer-requests/{id}` | GET | Retrieve a search + its offers | $0.10 (spec says $0.005) |
+| `/apis/v2/duffel/flights/offers/{id}` | GET | Refresh one offer — authoritative price/expiry | inspect live |
+| `/apis/v2/duffel/flights/orders/create` | POST | Book: pays fare, returns PNR + e-ticket | = full fare total |
+| `/apis/v2/duffel/flights/orders/hold-create` | POST | Hold without immediate payment | inspect live |
+| `/apis/v2/duffel/flights/seat-maps` | GET | Seat maps for an offer | inspect live |
+| `/apis/v2/duffel/flights/order-change-requests/create`, `/apis/v2/duffel/flights/order-changes/create`, `/apis/v2/duffel/flights/order-cancellations/create`, `/order-cancellations/{id}`, `/order-cancellations/{id}/confirm` | POST/GET | Changes & cancellations | inspect live |
+
+**Search body:**
+```json
+{"data":{"slices":[{"origin":"SFO","destination":"LGA","departure_date":"2026-10-06"}],
+"passengers":[{"type":"adult"}]}}
+```
+`SliceInput` requires `origin`, `destination` (IATA), `departure_date` (YYYY-MM-DD). `PassengerInput`: `type: "adult"` or `age` for under-18.
+
+**Booking flow:**
+1. `pay` the search (`-X POST -d '<body>'`, `--max-amount` above $0.10). Save the full response — the offers array is large; parse it, don't re-buy.
+2. Shortlist 3–6 offers: airline, times, stops, duration, total. Note inventory is whatever the proxy returns (one SFO→LGA search returned American-only, 1-stop — no nonstops exist SFO→LGA anyway due to the perimeter rule).
+3. User picks an offer. **Refresh it** via `offers/{id}` immediately before ordering — the returned price and `expires_at` are authoritative; offers expire.
+4. **Funding:** the `orders/create` x402 payment equals the **entire fare** (`BalancePayment`: `type: "balance"`, `amount` = refreshed `total_amount`, `currency` = offer currency; settled charge = fare + small service fee). The Gateway balance must cover the whole ticket — deposit the full amount first. This is real money; get explicit approval for the deposit amount.
+5. Collect passenger details (`BookingPassenger`, all required): `id` (passenger id from the offer-request response), `title` (mr/ms/mrs/dr), `gender` (m/f/x), `given_name`, `family_name`, `born_on` (YYYY-MM-DD), `email`, `phone_number`.
+6. Present the **full purchase review** — itinerary with times/airports, airline + flight numbers, fare breakdown, passenger names, total including service fee, payer address — and get explicit approval.
+7. `pay` `orders/create` with `-X POST` and the booking body. Verify: HTTP 201, `booking_reference` (PNR), `electronic_ticket` documents. On 422 (validation/expired offer/amount mismatch): not charged — refresh and re-review, never blind-retry.
+
+**Flight gotchas:**
+- Amount mismatch (even $0.01) → 422, not charged. Always use the freshly refreshed total.
+- `payment_required_by` / `expires_at` are real deadlines; don't let a review sit.
+- Spec prices for Duffel endpoints were wrong in testing ($0.02/$0.005 spec vs $0.10 live) — `inspect`/live-402 first, as always.
 
 ## Guardrails
 
