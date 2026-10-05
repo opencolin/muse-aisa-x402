@@ -1,0 +1,15 @@
+{
+  "name": "muse-aisa-x402",
+  "private": true,
+  "type": "module",
+  "description": "Demo buyer: pay AIsa for a CoinGecko price with USDC on Arc via x402 Gateway.",
+  "scripts": {
+    "probe": "node scripts/buy-price.mjs --probe",
+    "buy": "node scripts/buy-price.mjs",
+    "prepare": "node scripts/prepare-wallet.mjs",
+    "key-check": "node scripts/key-check.mjs"
+  },
+  "dependencies": {
+    "viem": "^2.47.11"
+  }
+}
