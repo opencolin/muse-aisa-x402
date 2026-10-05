@@ -1,31 +1,39 @@
 # Muse buys an AIsa price with USDC on Arc
 
-Real x402 payment example. The recorded buy is a live debit, not a replay.
+One real purchase: a CoinGecko price from AIsa, paid in USDC on Arc mainnet over x402. No API key is required for the payment.
 
-The wallet key and the AIsa key stay in `.env`. They are gitignored.
+Give this to your Muse agent:
 
-## Ready now
+```text
+Follow https://raw.githubusercontent.com/opencolin/muse-aisa-x402/main/skills/buy-aisa.md and buy the AIsa CoinGecko price with my Arc wallet.
+```
 
-- `npm run probe` decodes the live 402 and refuses unless Arc mainnet (`eip155:5042`) is the Gateway row, under $0.25.
-- `npm run buy` prints that row and signs nothing.
-- `npm run buy -- --execute` signs a GatewayWalletBatched authorization and retries. One real payment.
-- `npm run prepare` prints the address, Arc USDC, Gateway allowance, and Gateway available balance.
-- `npm run prepare -- --deposit 2 --execute` approves and deposits. A transfer to the Gateway address is not a deposit.
-- `npm run key-check` checks `AISA_API_KEY` against the v1 API. The demo payment does not use the key.
+## What you need
 
-## When the wallet is available
+- A dedicated Arc wallet, not your main one. A 12-word recovery phrase is enough. The app does not have to show a raw private key.
+- Arc USDC on that address. Gas on Arc is USDC too.
+- An AIsa API key is optional. It checks the v1 account. The buy does not send it.
+
+## What the agent must not do
+
+- Invent a wallet.
+- Commit `.env`, the phrase, or the key.
+- Transfer USDC to the Gateway address. Deposit with `deposit()`.
+- Pay on Arc testnet. AIsa accepts Arc mainnet, chain id `5042`.
+- Spend more than $0.25 on the demo call.
+
+## Human path
 
 ```bash
+git clone https://github.com/opencolin/muse-aisa-x402
+cd muse-aisa-x402
 cp .env.example .env
-# set PRIVATE_KEY or DEMO_MNEMONIC, and optionally AISA_API_KEY
 npm install
 npm run prepare
 npm run prepare -- --deposit 2 --execute
 npm run buy -- --execute
 ```
 
-`fixtures/last-receipt.json` is the demo receipt: prices, both Gateway balances, and the payment response. It is gitignored.
+`npm run buy` signs nothing. The payment is `--execute`.
 
-Arc USDC for the deposit is the ERC-20 at `0x3600000000000000000000000000000000000000`. Gas on Arc is the native balance of the same token. Fund both enough to deposit and to pay gas.
-
-If the paying wallet is a Circle agent wallet with no exportable key, use the Muse prompt in DEMO.md. This script cannot sign for that wallet.
+Proven once on 2026-10-04: a phrase-derived address deposited 2 USDC into Gateway, AIsa returned HTTP 200 for bitcoin and ethereum prices, and the response included `payment-response`. Gateway settlement can lag that response.
